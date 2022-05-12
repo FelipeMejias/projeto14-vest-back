@@ -79,20 +79,28 @@ app.post("/sign-up", async (req, res) => {
 
 app.post('/itens', async (req,res)=>{
     const body=req.body
-    
+    const {nome}=req.body
     try{
-        await db.collection('itens').insertOne(body)
+        await db.collection('itens').insertOne({...body,id:nome.split(' ').join('')})
         res.sendStatus(200)
     }catch{res.sendStatus(499)}
 })
 
 app.get('/itens', async (req,res)=>{
-    console.log(req.query)
-    
+
     try{
         const lista =await db.collection('itens').find(req.query).toArray()
-        res.send(lista);console.log('1')
-    }catch{res.sendStatus(499);console.log('2')}
+        res.send(lista)
+    }catch{res.sendStatus(499)}
+})
+
+app.get('/itens/:idItem', async (req,res)=>{
+    const id=req.params.idItem
+    
+    try{
+        const item =await db.collection('itens').findOne({id})
+        res.send(item)
+    }catch{res.sendStatus(499)}
 })
 
 
