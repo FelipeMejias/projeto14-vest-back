@@ -1,10 +1,14 @@
 import express,{json} from 'express'
 import cors from 'cors'
+import joi from 'joi'
 import dotenv from 'dotenv'
+import bcrypt from 'bcrypt'
 import {MongoClient} from 'mongodb'
+import {v4 as uuid} from 'uuid'
 dotenv.config()
+
 const app=express()
-const port=process.env.PORTA || 5007
+
 app.use( json() )
 app.use( cors() )
 
@@ -13,9 +17,63 @@ const mongoClient=new MongoClient(process.env.MONGO_URL)
 try{
     await mongoClient.connect()
     db=mongoClient.db(process.env.BANCO)
-    
 }catch{console.log('Erro ao conectar ao banco')}
 
+// Login
+app.post("/sign-in", async (req, res) => {
+    console.log("entrei")
+    const signInSchema = joi.object({
+        email: joi.string().email().required(),
+        password: joi.string().required()
+    });
+    const {error} = signInSchema.validate(req.body, {abortEarly: false})
+    if (error) {
+        return res.status(422).send(error.details.map(detail => detail.message))
+    }
+    
+    try {
+        const user = await db.collection("users").findOne({email: req.body.email})
+        if(!user) return res.sendStatus(404)
+        if(user && bcrypt.compareSync(req.body.password, user.password)) {
+            const token = uuid()
+            await db.collection("sesions").insertOne({token, userID: user._id})
+            res.send({token, name: user.name})
+        }
+    } catch (error) {
+        return res.sendStatus(500)
+    }
+})
+
+
+// Cadasrto
+app.post("/sign-up", async (req, res) => {
+    const signUpSchema = joi.object({
+        name: joi.string().required(),
+        email: joi.string().email().required(),
+        password: joi.string().required(),
+        confirmPassword: joi.ref('password')
+    });
+    const {error} = signUpSchema.validate(req.body, {abortEarly: false})
+    if (error) {
+        return res.status(422).send(error.details.map(detail => detail.message))
+    }
+
+    try {
+        const {name, email, password} = req.body
+        
+        const SALT = 10
+        const hashPassword = bcrypt.hashSync(password, SALT)
+
+        await db.collection("users").insertOne({
+            name,
+            email,
+            password: hashPassword
+        })
+        res.sendStatus(201)
+    } catch (error) {
+        return res.sendStatus(500)
+    }
+})
 
 
 
@@ -67,5 +125,5 @@ app.get('/busca/:palavra', async (req,res)=>{
 })
 
 
-
+const port=process.env.PORTA || 5007
 app.listen(port,()=>console.log(`Servidor em pé na porta ${port}`))
