@@ -36,7 +36,7 @@ app.post("/sign-in", async (req, res) => {
         if(!user) return res.sendStatus(404)
         if(user && bcrypt.compareSync(req.body.password, user.password)) {
             const token = uuid()
-            await db.collection("sesions").insertOne({token, userID: user._id})
+            await db.collection("sesions").insertOne({token, userID: user.email})
             res.send({token, name: user.name})
         }
     } catch (error) {
@@ -121,9 +121,32 @@ app.get('/busca/:palavra', async (req,res)=>{
 
         })
         res.send(listaFiltrados)
+        
     }catch{res.sendStatus(499)}
 })
 
+app.get('/carrinho', async (req,res)=>{
+    const {token}=req.headers
+    try{
+        const sessao =await db.collection('sesions').findOne({token})
+        const usuario =await db.collection('users').findOne({email:sessao.userID})
+        const lista=await db.collection('carrinho').find({usuario:usuario.email}).toArray()
+        res.send(lista)
+
+    }catch{res.sendStatus(499)}
+})
+app.post('/carrinho', async (req,res)=>{
+    const {token}=req.headers
+    const body=req.body
+    delete body._id
+    try{
+        const sessao =await db.collection('sesions').findOne({token})
+        const usuario =await db.collection('users').findOne({email:sessao.userID})
+        await db.collection('carrinho').insertOne({...body,usuario:usuario.email})
+        res.sendStatus(200)
+
+    }catch(e){res.status(499).send(e)}
+})
 
 const port=process.env.PORTA || 5007
 app.listen(port,()=>console.log(`Servidor em pé na porta ${port}`))
