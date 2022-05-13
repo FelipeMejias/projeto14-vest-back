@@ -3,8 +3,10 @@ import cors from 'cors'
 import joi from 'joi'
 import dotenv from 'dotenv'
 import bcrypt from 'bcrypt'
-import {MongoClient} from 'mongodb'
 import {v4 as uuid} from 'uuid'
+
+import db from './db.js'
+
 dotenv.config()
 
 const app=express()
@@ -12,16 +14,8 @@ const app=express()
 app.use( json() )
 app.use( cors() )
 
-let db
-const mongoClient=new MongoClient(process.env.MONGO_URL)
-try{
-    await mongoClient.connect()
-    db=mongoClient.db(process.env.BANCO)
-}catch{console.log('Erro ao conectar ao banco')}
-
 // Login
 app.post("/sign-in", async (req, res) => {
-    console.log("entrei")
     const signInSchema = joi.object({
         email: joi.string().email().required(),
         password: joi.string().required()
