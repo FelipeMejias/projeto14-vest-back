@@ -124,14 +124,40 @@ app.get('/busca/:palavra', async (req,res)=>{
         
     }catch{res.sendStatus(499)}
 })
+app.get('/carrinho/:idItem', async (req,res)=>{
+    const {token}=req.headers
+    const {idItem}=req.params
+    try{
+        const sessao =await db.collection('sesions').findOne({token})
+        const usuario =await db.collection('users').findOne({email:sessao.userID})
+        const item=await db.collection('carrinho').findOne({usuario:usuario.email,id:idItem})
+        if(item){return res.send(true)}
+        res.send(false)
 
+    }catch{res.sendStatus(499)}
+})
+app.delete('/carrinho/:idItem', async (req,res)=>{
+    const {token}=req.headers
+    const {idItem}=req.params
+    try{
+        const sessao =await db.collection('sesions').findOne({token})
+        const usuario =await db.collection('users').findOne({email:sessao.userID})
+        const item=await db.collection('carrinho').deleteOne({usuario:usuario.email,id:idItem})
+        res.sendStatus(200)
+
+    }catch{res.sendStatus(499)}
+})
 app.get('/carrinho', async (req,res)=>{
     const {token}=req.headers
     try{
         const sessao =await db.collection('sesions').findOne({token})
         const usuario =await db.collection('users').findOne({email:sessao.userID})
         const lista=await db.collection('carrinho').find({usuario:usuario.email}).toArray()
-        res.send(lista)
+        let total=0
+        for(let k=0;k<lista.length;k++){
+            total+=parseFloat(lista[k].valor)
+        }
+        res.send({itens:lista,total})
 
     }catch{res.sendStatus(499)}
 })
